@@ -40,14 +40,18 @@ ai-saas-kit/
 
 ## Quick start
 
-**Requirements:** Node.js 20+, npm 10+, PostgreSQL, Redis (for full stack).
+**Requirements:** Node.js 20+, npm 10+, Docker (PostgreSQL + Redis).
 
 ```bash
 git clone <repo-url> ai-saas-kit
 cd ai-saas-kit
 npm install
-cp apps/api/.env.example apps/api/.env      # when api exists
+cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.local.example apps/web/.env.local
+# Set JWT_SECRET and JWT_REFRESH_SECRET in apps/api/.env (see .env.example)
+
+npm run db:up
+npm run db:migrate
 npm run dev
 ```
 

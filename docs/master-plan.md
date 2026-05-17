@@ -1,10 +1,8 @@
 # Project 1 — AI SaaS Starter Kit
 ## Master Plan · DDD Architecture · AI Documentation
 
-> **Spanish version:** [PROJECT_1_MASTER_PLAN.md](../PROJECT_1_MASTER_PLAN.md)
-
 > **Version:** 1.0.0  
-> **Stack:** Next.js 15 · NestJS · PostgreSQL · Redis · OpenAI  
+> **Stack:** Next.js 16 · NestJS · PostgreSQL · Redis · OpenAI  
 > **Paradigm:** Domain-Driven Design (DDD) + Clean Architecture  
 > **Purpose of this document:** Source of truth for the project. Use it as full context for any AI session (Claude, ChatGPT, Cursor, Copilot). Paste this document at the start of each conversation.
 
@@ -53,7 +51,7 @@ This project demonstrates to a CTO or Tech Lead that the candidate can:
 │                                                         │
 │  ┌──────────────────┐    ┌──────────────────────────┐   │
 │  │   apps/web       │    │      apps/api            │   │
-│  │   Next.js 15     │◄──►│      NestJS              │   │
+│  │   Next.js 16     │◄──►│      NestJS              │   │
 │  │   App Router     │    │      Port 3001           │   │
 │  │   Port 3000      │    │                          │   │
 │  └──────────────────┘    └──────────────────────────┘   │
@@ -96,7 +94,7 @@ User → Vercel Edge → Next.js middleware (validates JWT)
 ai-saas-kit/
 │
 ├── apps/
-│   ├── web/                          # Next.js 15
+│   ├── web/                          # Next.js 16
 │   │   ├── app/
 │   │   │   ├── (auth)/               # Public routes: login, register
 │   │   │   │   ├── login/page.tsx
@@ -1116,7 +1114,7 @@ To get precise help from any AI, include this block at the start of your message
 
 ```
 Project context:
-- It is an AI SaaS Starter Kit with Next.js 15 + NestJS
+- It is an AI SaaS Starter Kit with Next.js 16 + NestJS
 - Architecture: DDD with bounded contexts (Auth, Organization, Billing, AI, User)
 - ORM: Prisma with PostgreSQL
 - Each module has: domain/ application/ infrastructure/ presentation/
