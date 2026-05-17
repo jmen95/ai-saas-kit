@@ -1,0 +1,40 @@
+---
+description: Core project context — stack, DDD, multi-tenancy
+alwaysApply: true
+---
+
+# AI SaaS Starter Kit — Core Rules
+
+## Stack
+
+- Monorepo: Turborepo (`apps/web`, `apps/api`, `packages/*`)
+- Web: Next.js 15 App Router (`apps/web`, port 3000)
+- API: NestJS (`apps/api`, port 3001)
+- DB: Prisma + PostgreSQL (`packages/db/schema.prisma`)
+- Shared: `packages/shared` (types, plan limits, error codes)
+
+## Architecture
+
+- Five bounded contexts: `auth`, `organization`, `billing`, `ai`, `user`
+- Each module: `domain/` → `application/` → `infrastructure/` → `presentation/`
+- Domain layer must NOT import Prisma, HTTP, or external SDKs
+- One use case per file in `application/use-cases/`
+
+## Multi-tenancy (required)
+
+- Every tenant query MUST filter by `organizationId`
+- Use `TenantGuard` + `@CurrentOrg()` on protected routes
+- Never return cross-tenant data
+
+## API responses
+
+```typescript
+// Success: { data, meta? }
+// Error: { error: { code, message, statusCode } }
+```
+
+## References
+
+- Full agent guide: `AGENTS.md`
+- User docs: `docs/`
+- Blueprint: `PROJECT_1_MASTER_PLAN.md`

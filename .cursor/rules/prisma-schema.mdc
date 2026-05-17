@@ -1,0 +1,37 @@
+---
+description: Prisma schema and database conventions
+globs: packages/db/**/*
+alwaysApply: false
+---
+
+# Prisma / Database Rules
+
+## Source of truth
+
+`packages/db/schema.prisma` — all models and enums live here.
+
+## Conventions
+
+- Primary keys: `@default(cuid())` (not UUID)
+- Table names: `@@map("snake_case_table")`
+- Tenant tables: include `organizationId` + relation to `Organization`
+- Refresh tokens: store `tokenHash` only, never raw tokens
+- Usage: `Organization.messagesUsedThisMonth` — increment on AI completion, reset via cron
+
+## Indexes
+
+- Conversations: `@@index([organizationId, createdAt(sort: Desc)])`
+- Messages: `@@index([conversationId, createdAt(sort: Asc)])`
+
+## Enums
+
+`Plan` (FREE, PRO, ENTERPRISE), `MemberRole`, `MessageRole`
+
+## Migrations
+
+- Dev: `prisma migrate dev`
+- Prod: `prisma migrate deploy` — never `synchronize: true`
+
+## Domain separation
+
+Prisma types stay in infrastructure mappers — domain entities do not import `@prisma/client`.

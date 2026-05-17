@@ -1,0 +1,35 @@
+---
+description: Next.js web app — routes, components, API integration
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Next.js Web Conventions
+
+## Route groups
+
+- `(auth)/` — public: login, register
+- `(dashboard)/` — protected: overview, chat, settings, members
+- `middleware.ts` — JWT / session route protection
+
+## Data access
+
+- Prefer Server Components fetching `NEXT_PUBLIC_API_URL`
+- Pass auth via httpOnly cookies or Authorization header (match auth implementation)
+- SSE chat: `EventSource` or `hooks/useChat.ts` for `/ai/conversations/:id/stream`
+
+## Components
+
+- `components/chat/` — ChatWindow, MessageBubble, InputBar
+- `components/billing/` — PricingTable, UsageBar, PlanBadge
+- `components/shared/` — Sidebar, Avatar, ThemeToggle
+- Use `@repo/ui` for shadcn primitives
+
+## Hooks
+
+- `useOrganization`, `useSubscription`, `useChat` — colocate in `hooks/`
+
+## Do not
+
+- Put business rules or plan limits in the frontend only — API enforces limits
+- Hardcode API URLs — use `process.env.NEXT_PUBLIC_API_URL`

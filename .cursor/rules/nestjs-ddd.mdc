@@ -1,0 +1,43 @@
+---
+description: NestJS API — DDD module structure and patterns
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# NestJS + DDD Conventions
+
+## Adding features
+
+1. Business rules → domain entity methods (e.g. `conversation.canAddMessage()`)
+2. Orchestration → `application/use-cases/<action>.use-case.ts`
+3. Persistence → extend `I*Repository` in domain; implement in `infrastructure/repositories/`
+4. HTTP → `presentation/*.controller.ts` with guards
+
+## Repository mapping
+
+```typescript
+// Always map Prisma → domain explicitly
+private toDomain(raw: PrismaRow): Entity { ... }
+private toPersistence(entity: Entity): PrismaInput { ... }
+```
+
+## Guards (typical order)
+
+`TenantGuard` → `JwtAuthGuard` → `PlanGuard` (when `@RequiresPlan` is set)
+
+## Inject repository tokens
+
+```typescript
+@Inject(CONVERSATION_REPOSITORY)
+private repo: IConversationRepository
+```
+
+## External services
+
+- OpenAI → `infrastructure/services/openai.service.ts` (AI context only)
+- Stripe → billing infrastructure only
+- Never call OpenAI/Stripe from domain entities
+
+## Streaming
+
+Use SSE (`@Sse()`), not WebSockets, for AI token streams.
