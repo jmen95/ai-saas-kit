@@ -66,12 +66,14 @@ NEXTAUTH_URL=http://localhost:3000
 
 ## Database
 
-When `packages/db` is set up with Prisma:
+Prisma reads `DATABASE_URL` from **`apps/api/.env`** (same file as the API). Ensure it exists:
 
 ```bash
-# From repo root
-npx prisma migrate dev --schema=packages/db/schema.prisma
-npx prisma generate --schema=packages/db/schema.prisma
+cp apps/api/.env.example apps/api/.env
+# Edit DATABASE_URL if needed (default matches docker-compose)
+
+npm run db:migrate
+npm run db:generate
 ```
 
 Optional: open Prisma Studio:

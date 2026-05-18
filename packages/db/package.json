@@ -11,11 +11,11 @@
     }
   },
   "scripts": {
-    "build": "prisma generate --schema=./prisma/schema.prisma && tsc",
-    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
-    "db:push": "prisma db push --schema=./prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=./prisma/schema.prisma",
+    "build": "npm run db:generate && tsc",
+    "db:generate": "dotenv -e ../../apps/api/.env -e .env -- prisma generate --schema=./prisma/schema.prisma",
+    "db:migrate": "dotenv -e ../../apps/api/.env -e .env -- prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:push": "dotenv -e ../../apps/api/.env -e .env -- prisma db push --schema=./prisma/schema.prisma",
+    "db:studio": "dotenv -e ../../apps/api/.env -e .env -- prisma studio --schema=./prisma/schema.prisma",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
+    "dotenv-cli": "^10.0.0",
     "prisma": "^6.19.0",
     "typescript": "5.9.2"
   }
