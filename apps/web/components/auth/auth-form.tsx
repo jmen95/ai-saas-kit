@@ -1,16 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { apiFetch, storeTokens } from "../../lib/api";
-import styles from "../../app/(auth)/auth.module.css";
+import { Button, Input, Label } from "@repo/ui";
+import { apiFetch, setSession } from "../../lib/api";
 
 type AuthFormProps = {
   mode: "login" | "register";
 };
 
+function safeNext(next: string | null): string {
+  // Only allow internal, single-slash-prefixed paths to avoid open redirects.
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return "/overview";
+}
+
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -24,9 +33,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
     const path = mode === "login" ? "/auth/login" : "/auth/register";
     const body =
-      mode === "login"
-        ? { email, password }
-        : { email, password, name };
+      mode === "login" ? { email, password } : { email, password, name };
 
     const result = await apiFetch<{
       accessToken: string;
@@ -37,77 +44,99 @@ export function AuthForm({ mode }: AuthFormProps) {
       auth: false,
     });
 
-    setLoading(false);
-
     if (!result.ok) {
+      setLoading(false);
       setError(result.error.message);
       return;
     }
 
-    storeTokens(result.data.accessToken, result.data.refreshToken);
-    document.cookie = `accessToken=${result.data.accessToken}; path=/; max-age=900; SameSite=Lax`;
-    router.push("/overview");
+    setSession(result.data.accessToken, result.data.refreshToken);
+    router.push(next);
     router.refresh();
   }
 
   return (
-    <>
-      <h1 className={styles.title}>
+    <div className="w-full">
+      <h1 className="text-2xl font-bold tracking-tight">
         {mode === "login" ? "Welcome back" : "Create your account"}
       </h1>
-      <p className={styles.subtitle}>
+      <p className="mt-1 text-sm text-muted-foreground">
         {mode === "login"
           ? "Sign in to your AI SaaS workspace"
-          : "Start building with the starter kit"}
+          : "Spin up a workspace in seconds"}
       </p>
 
-      <form className={styles.form} onSubmit={onSubmit}>
+      <form className="mt-6 flex flex-col gap-4" onSubmit={onSubmit}>
         {mode === "register" && (
-          <label className={styles.label}>
-            Name
-            <input
-              className={styles.input}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="Ada Lovelace"
               required
             />
-          </label>
+          </div>
         )}
-        <label className={styles.label}>
-          Email
-          <input
-            className={styles.input}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            autoComplete="email"
             required
           />
-        </label>
-        <label className={styles.label}>
-          Password
-          <input
-            className={styles.input}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 8 characters"
+            autoComplete={
+              mode === "login" ? "current-password" : "new-password"
+            }
             minLength={8}
             required
           />
-        </label>
-        {error && <p className={styles.error}>{error}</p>}
-        <button type="submit" className={styles.submit} disabled={loading}>
-          {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Sign up"}
-        </button>
+        </div>
+        {error && (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={loading} className="mt-1">
+          {loading
+            ? "Please wait…"
+            : mode === "login"
+              ? "Sign in"
+              : "Create account"}
+        </Button>
       </form>
 
-      <a
-        className={styles.link}
-        href={mode === "login" ? "/register" : "/login"}
-      >
-        {mode === "login"
-          ? "Need an account? Register"
-          : "Already have an account? Sign in"}
-      </a>
-    </>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        {mode === "login" ? (
+          <>
+            Need an account?{" "}
+            <Link href="/register" className="text-primary hover:underline">
+              Register
+            </Link>
+          </>
+        ) : (
+          <>
+            Already have an account?{" "}
+            <Link href="/login" className="text-primary hover:underline">
+              Sign in
+            </Link>
+          </>
+        )}
+      </p>
+    </div>
   );
 }

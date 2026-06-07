@@ -1,9 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { getStoredTokens } from "../lib/api";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { API_URL, apiFetch, getStoredTokens } from "../lib/api";
 
 export type ChatMessage = {
   id: string;
@@ -15,33 +13,39 @@ export function useChat(conversationId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadMessages = useCallback(async (id: string) => {
-    const tokens = getStoredTokens();
-    const res = await fetch(`${API_URL}/ai/conversations/${id}`, {
-      headers: tokens?.accessToken
-        ? { Authorization: `Bearer ${tokens.accessToken}` }
-        : {},
-    });
-    const json = await res.json();
-    if (json.data?.messages) {
-      setMessages(
-        json.data.messages.map((m: ChatMessage) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-        })),
-      );
+    setLoading(true);
+    setError(null);
+    const res = await apiFetch<{ messages?: ChatMessage[] }>(
+      `/ai/conversations/${id}`,
+    );
+    setLoading(false);
+    if (!res.ok) {
+      setError(res.error.message);
+      return;
     }
+    setMessages(
+      (res.data.messages ?? []).map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+      })),
+    );
   }, []);
 
   const sendMessage = useCallback(
     async (text: string) => {
       if (!conversationId || !text.trim()) return;
-
       const tokens = getStoredTokens();
-      if (!tokens?.accessToken) return;
+      if (!tokens?.accessToken) {
+        setError("Your session has expired. Please sign in again.");
+        return;
+      }
 
+      setError(null);
       setMessages((prev) => [
         ...prev,
         { id: `user-${Date.now()}`, role: "USER", content: text },
@@ -54,12 +58,27 @@ export function useChat(conversationId: string | null) {
       );
       url.searchParams.set("message", text);
 
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${tokens.accessToken}` },
-      });
-
-      if (!res.body) {
+      let res: Response;
+      try {
+        res = await fetch(url.toString(), {
+          headers: { Authorization: `Bearer ${tokens.accessToken}` },
+        });
+      } catch {
         setStreaming(false);
+        setError("Network error. Please check your connection and retry.");
+        return;
+      }
+
+      if (!res.ok || !res.body) {
+        setStreaming(false);
+        let message = "The assistant could not respond.";
+        try {
+          const json = await res.json();
+          message = json?.error?.message ?? message;
+        } catch {
+          /* keep default */
+        }
+        setError(message);
         return;
       }
 
@@ -102,7 +121,7 @@ export function useChat(conversationId: string | null) {
                 setStreaming(false);
               }
             } catch {
-              /* skip */
+              /* skip malformed chunk */
             }
           }
         }
@@ -130,5 +149,13 @@ export function useChat(conversationId: string | null) {
     [conversationId],
   );
 
-  return { messages, streaming, streamContent, sendMessage, loadMessages };
+  return {
+    messages,
+    streaming,
+    streamContent,
+    loading,
+    error,
+    sendMessage,
+    loadMessages,
+  };
 }
