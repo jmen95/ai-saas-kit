@@ -1,4 +1,5 @@
 import { Body, Controller, Post } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { LoginDto } from "../application/dtos/login.dto";
 import { RefreshDto } from "../application/dtos/refresh.dto";
 import { RegisterDto } from "../application/dtos/register.dto";
@@ -7,6 +8,8 @@ import { RefreshUseCase } from "../application/use-cases/refresh.use-case";
 import { RegisterUseCase } from "../application/use-cases/register.use-case";
 import { TokenService } from "../infrastructure/token.service";
 
+// Stricter rate limit on auth endpoints: 20 requests / minute / IP.
+@Throttle({ default: { ttl: 60_000, limit: 20 } })
 @Controller("auth")
 export class AuthController {
   constructor(
