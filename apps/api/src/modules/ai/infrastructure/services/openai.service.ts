@@ -12,8 +12,11 @@ export class OpenAIService {
   private readonly client: OpenAI | null;
 
   constructor(config: ConfigService) {
-    const key = config.get<string>("OPENAI_API_KEY");
-    this.client = key?.startsWith("sk-") ? new OpenAI({ apiKey: key }) : null;
+    const key = config.get<string>("OPENAI_API_KEY")?.trim();
+    // A bare "sk-" is the env placeholder, not a real key — treat as unconfigured
+    // so the service transparently falls back to mock streaming.
+    const isReal = !!key && key.startsWith("sk-") && key.length > 20;
+    this.client = isReal ? new OpenAI({ apiKey: key }) : null;
   }
 
   isConfigured(): boolean {

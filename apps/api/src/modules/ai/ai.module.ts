@@ -7,9 +7,10 @@ import { CONVERSATION_REPOSITORY } from "./domain/repositories/conversation.repo
 import { PrismaConversationRepository } from "./infrastructure/repositories/prisma-conversation.repository";
 import { OpenAIService } from "./infrastructure/services/openai.service";
 import { AiController } from "./presentation/ai.controller";
+import { AiStatusController } from "./presentation/ai-status.controller";
 
 @Module({
-  controllers: [AiController],
+  controllers: [AiController, AiStatusController],
   providers: [
     { provide: CONVERSATION_REPOSITORY, useClass: PrismaConversationRepository },
     OpenAIService,

@@ -26,8 +26,8 @@ import {
   CONVERSATION_REPOSITORY,
   type IConversationRepository,
 } from "../domain/repositories/conversation.repository.interface";
-import { NotFoundException } from "@nestjs/common";
-import { DomainErrorCode } from "@repo/shared";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { DomainErrorCode, getPlanLimits } from "@repo/shared";
 
 @Controller("ai/conversations")
 @UseGuards(JwtAuthGuard, TenantGuard)
@@ -71,6 +71,15 @@ export class AiController {
     }
     if (dto.title !== undefined) conversation.setTitle(dto.title);
     if (dto.systemPrompt !== undefined) {
+      // Custom system prompts are a paid feature (PRO and above).
+      if (dto.systemPrompt && !getPlanLimits(org.plan).systemPromptEnabled) {
+        const err = new ForbiddenException(
+          "Custom system prompts require the PRO plan.",
+        );
+        (err as ForbiddenException & { code: string }).code =
+          DomainErrorCode.PLAN_LIMIT_REACHED;
+        throw err;
+      }
       conversation.setSystemPrompt(dto.systemPrompt);
     }
     await this.conversationRepo.save(conversation);
