@@ -16,6 +16,7 @@
     "db:migrate": "dotenv -e ../../apps/api/.env -e .env -- prisma migrate dev --schema=./prisma/schema.prisma",
     "db:push": "dotenv -e ../../apps/api/.env -e .env -- prisma db push --schema=./prisma/schema.prisma",
     "db:studio": "dotenv -e ../../apps/api/.env -e .env -- prisma studio --schema=./prisma/schema.prisma",
+    "db:seed": "dotenv -e ../../apps/api/.env -e .env -- tsx prisma/seed.ts",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "@repo/typescript-config": "*",
     "dotenv-cli": "^10.0.0",
     "prisma": "^6.19.0",
+    "tsx": "^4.22.4",
     "typescript": "5.9.2"
   }
 }

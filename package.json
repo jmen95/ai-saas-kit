@@ -12,7 +12,9 @@
     "db:down": "docker compose down",
     "db:generate": "npm run db:generate --workspace=@repo/db",
     "db:migrate": "npm run db:migrate --workspace=@repo/db",
-    "db:push": "npm run db:push --workspace=@repo/db"
+    "db:push": "npm run db:push --workspace=@repo/db",
+    "db:seed": "npm run db:seed --workspace=@repo/db",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "prettier": "^3.7.4",
