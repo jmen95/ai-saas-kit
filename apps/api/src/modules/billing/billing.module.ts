@@ -2,7 +2,9 @@ import { Module } from "@nestjs/common";
 import { CreateCheckoutUseCase } from "./application/use-cases/create-checkout.use-case";
 import { GetPlansUseCase } from "./application/use-cases/get-plans.use-case";
 import { GetUsageUseCase } from "./application/use-cases/get-usage.use-case";
+import { ResetUsageUseCase } from "./application/use-cases/reset-usage.use-case";
 import { StripeService } from "./infrastructure/stripe.service";
+import { UsageResetScheduler } from "./infrastructure/usage-reset.scheduler";
 import { BillingController } from "./presentation/billing.controller";
 
 @Module({
@@ -11,7 +13,9 @@ import { BillingController } from "./presentation/billing.controller";
     StripeService,
     GetPlansUseCase,
     GetUsageUseCase,
+    ResetUsageUseCase,
     CreateCheckoutUseCase,
+    UsageResetScheduler,
   ],
 })
 export class BillingModule {}
