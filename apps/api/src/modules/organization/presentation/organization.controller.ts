@@ -15,14 +15,9 @@ import { UpdateMemberRoleDto } from "../application/dtos/update-member-role.dto"
 import { UpdateOrganizationDto } from "../application/dtos/update-organization.dto";
 import { GetCurrentOrgUseCase } from "../application/use-cases/get-current-org.use-case";
 import { ListMembersUseCase } from "../application/use-cases/list-members.use-case";
+import { RemoveMemberUseCase } from "../application/use-cases/remove-member.use-case";
+import { UpdateMemberRoleUseCase } from "../application/use-cases/update-member-role.use-case";
 import { UpdateOrgUseCase } from "../application/use-cases/update-org.use-case";
-import { PrismaService } from "../../../infrastructure/prisma/prisma.service";
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from "@nestjs/common";
-import { DomainErrorCode } from "@repo/shared";
 
 @Controller("organizations")
 @UseGuards(JwtAuthGuard, TenantGuard)
@@ -31,7 +26,8 @@ export class OrganizationController {
     private readonly getCurrentOrg: GetCurrentOrgUseCase,
     private readonly updateOrg: UpdateOrgUseCase,
     private readonly listMembers: ListMembersUseCase,
-    private readonly prisma: PrismaService,
+    private readonly removeMember: RemoveMemberUseCase,
+    private readonly updateMemberRole: UpdateMemberRoleUseCase,
   ) {}
 
   @Get("current")
@@ -53,45 +49,16 @@ export class OrganizationController {
   }
 
   @Delete("current/members/:id")
-  async removeMember(
-    @CurrentOrg() org: Organization,
-    @Param("id") memberId: string,
-  ) {
-    const member = await this.prisma.client.organizationMember.findFirst({
-      where: { id: memberId, organizationId: org.id },
-    });
-    if (!member) throw new NotFoundException("Member not found");
-    if (member.role === "OWNER") {
-      const err = new ForbiddenException("Cannot remove organization owner");
-      (err as ForbiddenException & { code: string }).code =
-        DomainErrorCode.CANNOT_REMOVE_OWNER;
-      throw err;
-    }
-    await this.prisma.client.organizationMember.delete({
-      where: { id: memberId },
-    });
-    return { success: true };
+  remove(@CurrentOrg() org: Organization, @Param("id") memberId: string) {
+    return this.removeMember.execute(org.id, memberId);
   }
 
   @Patch("current/members/:id")
-  async updateMemberRole(
+  updateRole(
     @CurrentOrg() org: Organization,
     @Param("id") memberId: string,
     @Body() dto: UpdateMemberRoleDto,
   ) {
-    const member = await this.prisma.client.organizationMember.findFirst({
-      where: { id: memberId, organizationId: org.id },
-    });
-    if (!member) throw new NotFoundException("Member not found");
-    if (member.role === "OWNER" && dto.role !== "OWNER") {
-      throw new BadRequestException("Cannot change owner role directly");
-    }
-    return this.prisma.client.organizationMember.update({
-      where: { id: memberId },
-      data: { role: dto.role },
-      include: {
-        user: { select: { id: true, email: true, name: true } },
-      },
-    });
+    return this.updateMemberRole.execute(org.id, memberId, dto.role);
   }
 }
