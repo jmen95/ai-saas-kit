@@ -9,7 +9,10 @@ export class UpdateProfileUseCase {
   async execute(userId: string, dto: UpdateProfileDto) {
     return this.prisma.client.user.update({
       where: { id: userId },
-      data: { name: dto.name },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.avatarUrl !== undefined ? { avatarUrl: dto.avatarUrl } : {}),
+      },
       select: {
         id: true,
         email: true,
