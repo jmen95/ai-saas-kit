@@ -1,28 +1,63 @@
 # AI SaaS Starter Kit
 
-A production-oriented SaaS starter kit with integrated AI, built as a Turborepo monorepo. It is designed for B2B products that need authentication, multi-tenancy, Stripe billing, and real-time AI chat—not a tutorial demo.
+A production-grade, multi-tenant **AI SaaS** starter built as a Turborepo monorepo: streaming AI chat, organizations, Stripe billing and RBAC — engineered with **Domain-Driven Design** and **Clean Architecture**.
+
+It runs **end-to-end with zero external accounts**: the AI chat falls back to a mock provider, billing runs in demo mode, and invitations work via copyable links. Add real keys (OpenAI, Stripe, Resend, OAuth) to light up each integration — every one degrades gracefully.
+
+> **Stack:** Next.js 16 · NestJS 11 · Prisma + PostgreSQL · Redis · Stripe · OpenAI · Turborepo
+
+---
+
+## Try it in 60 seconds
+
+**Requirements:** Node.js 20+, npm 10+, Docker (for PostgreSQL + Redis).
+
+```bash
+git clone <repo-url> ai-saas-kit && cd ai-saas-kit
+npm install
+
+# Env: API needs JWT secrets (generate with `openssl rand -base64 48`)
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.local.example apps/web/.env.local
+
+npm run db:up        # Postgres :5432 + Redis :6379 via Docker
+npm run db:migrate   # apply schema
+npm run db:seed      # demo account + sample conversations
+npm run dev          # web :3000 · api :3001
+```
+
+Then open [http://localhost:3000](http://localhost:3000) and sign in with the seeded account:
+
+| Email | Password |
+|-------|----------|
+| `demo@demo.com` | `demo1234` |
+
+You land in a PRO workspace with sample conversations, can chat with the (mock) AI assistant, invite teammates by link, and explore billing — no API keys required.
+
+---
 
 ## Features
 
-- **Authentication** — Email/password, OAuth (Google, GitHub), MFA (TOTP)
-- **Multi-tenancy** — Organization-scoped data with strict tenant isolation
-- **Billing** — Stripe subscriptions (Free / Pro / Enterprise), checkout, customer portal, webhooks
-- **AI chat** — Streaming responses (SSE), persistent history, plan-based usage limits
-- **Team management** — Invitations, members, RBAC (Owner / Admin / Member)
-- **Dashboard** — Usage metrics and organization settings
+- **Authentication** — Email/password with JWT access tokens + **rotating, hashed refresh tokens**; automatic silent refresh on the client; rate-limited auth routes.
+- **Multi-tenancy** — Organization-scoped data with a `TenantGuard`; every tenant query filters by `organizationId`.
+- **Streaming AI chat** — Real-time token streaming over **Server-Sent Events**; persistent history; per-plan message limits. Mock provider when no `OPENAI_API_KEY` is set (banner shown in UI).
+- **Team management** — Invite teammates via **secure link** (email optional via Resend), manage roles (Owner / Admin / Member), enforce per-plan seat limits.
+- **Billing** — Stripe checkout + customer portal, complete webhook handling (create/update/delete → plan sync + downgrade), per-plan usage limits. Demo mode without Stripe keys.
+- **Plans & limits** — FREE / PRO / ENTERPRISE limits enforced in **domain entities** and guards; monthly usage reset via a scheduled cron.
+- **Operability** — `GET /health` (DB + Redis), structured request logging with `x-request-id` correlation, global error contract.
 
 ## Tech stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 15 (App Router) |
-| API | NestJS |
-| Database | PostgreSQL (Prisma) |
-| Cache | Redis |
-| AI | OpenAI (GPT-4o family) |
+| Frontend | Next.js 16 (App Router), Tailwind, shared design system (`@repo/ui`) |
+| API | NestJS 11 |
+| Database | PostgreSQL via Prisma |
+| Cache | Redis (ioredis) |
+| AI | OpenAI (with mock fallback) |
 | Payments | Stripe |
-| Email | Resend |
-| Storage | Cloudflare R2 |
+| Email | Resend (optional) |
+| Monorepo | Turborepo + npm workspaces |
 
 ## Repository structure
 
@@ -30,76 +65,84 @@ A production-oriented SaaS starter kit with integrated AI, built as a Turborepo 
 ai-saas-kit/
 ├── apps/
 │   ├── web/          # Next.js dashboard (port 3000)
-│   └── api/          # NestJS API (port 3001) — planned
+│   ├── api/          # NestJS API (port 3001)
+│   └── docs/         # Documentation site (port 3002)
 ├── packages/
-│   ├── db/           # Prisma schema & client
-│   ├── shared/       # Shared types & constants
-│   └── ui/           # Shared UI components (shadcn)
-└── docs/             # User documentation
+│   ├── db/           # Prisma schema, client & seed
+│   ├── shared/       # Shared types, plan limits, error codes
+│   └── ui/           # Design system (shadcn-based)
+└── docs/             # Markdown documentation & ADRs
 ```
 
-## Quick start
+## Architecture
 
-**Requirements:** Node.js 20+, npm 10+, Docker (PostgreSQL + Redis).
+Five bounded contexts (`auth`, `organization`, `billing`, `ai`, `user`), each a NestJS module structured as **domain → application → infrastructure → presentation**. The domain layer never imports Prisma, HTTP or third-party SDKs.
+
+```mermaid
+flowchart LR
+  Client[Next.js web] -->|JWT| API[NestJS API]
+  API --> TG[TenantGuard]
+  TG --> UC[Use cases]
+  UC --> Repo[Prisma repositories]
+  Repo --> DB[(PostgreSQL)]
+  UC --> AI[OpenAI / mock]
+  UC --> Stripe[(Stripe)]
+```
+
+Request pipeline:
+
+```
+HTTP → ThrottlerGuard → JwtAuthGuard → TenantGuard → Controller → UseCase → Repository → DB
+```
+
+- **Multi-tenancy** — column-based (`organizationId`) with mandatory tenant filtering.
+- **Streaming** — AI responses via SSE, not WebSockets (see ADR 003).
+- **Usage** — counter on `Organization.messagesUsedThisMonth`, reset by cron (not COUNT-per-request).
+
+Details: [Architecture](docs/architecture.md) · [ADRs](docs/adr/README.md).
+
+## Development commands
 
 ```bash
-git clone <repo-url> ai-saas-kit
-cd ai-saas-kit
-npm install
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.local.example apps/web/.env.local
-# Set JWT_SECRET and JWT_REFRESH_SECRET in apps/api/.env (see .env.example)
-
-npm run db:up
-npm run db:migrate
-npm run dev
+npm run dev          # Start web + api (Turborepo)
+npm run build        # Production build (all workspaces)
+npm run lint         # ESLint across the monorepo
+npm run check-types  # TypeScript project-wide
+npm run test         # Unit tests (domain + plan limits)
+npm run db:seed      # Reset demo data
 ```
 
-- Web: [http://localhost:3000](http://localhost:3000)
-- API: [http://localhost:3001](http://localhost:3001)
+Run a single app: `npx turbo dev --filter=web`
 
-See [Getting started](docs/getting-started.md) for environment variables, database setup, and Stripe/OpenAI configuration.
+## Testing
+
+- **Unit** — domain rules (`Conversation` entity, plan limits) run without a database: `npm run test`.
+- **E2E** — auth flow (register / login / refresh) with Supertest against the live stack: `npm run test:e2e --workspace=api` (requires `db:up` + `db:migrate`).
+
+## Configuration & integrations
+
+All integrations are optional and degrade gracefully:
+
+| Integration | Without keys | With keys |
+|-------------|--------------|-----------|
+| OpenAI | Mock streaming responses + UI banner | Live model streaming |
+| Stripe | Demo mode (plans shown, checkout disabled) | Checkout, portal, webhooks |
+| Resend | Invitations via copyable link | Invitation emails + link |
+| OAuth | Email/password auth | Google / GitHub sign-in |
+
+See [Environment variables](docs/environment.md) and [Getting started](docs/getting-started.md).
 
 ## Documentation
 
 | Document | Audience |
 |----------|----------|
-| [Getting started](docs/getting-started.md) | Developers setting up locally |
+| [Getting started](docs/getting-started.md) | Local setup |
 | [Architecture](docs/architecture.md) | System design & request flow |
-| [Features](docs/features.md) | Product capabilities & plans |
 | [API reference](docs/api.md) | HTTP endpoints & response format |
 | [Environment variables](docs/environment.md) | `.env` reference |
-| [Deployment](docs/deployment.md) | CI/CD & production infra |
 | [ADRs](docs/adr/README.md) | Architecture decision records |
-| [AGENTS.md](AGENTS.md) | AI assistants & coding agents |
-| [Master plan](docs/master-plan.md) | Full blueprint (English) |
-| [PROJECT_1_MASTER_PLAN.md](PROJECT_1_MASTER_PLAN.md) | Full blueprint (Spanish) |
-| **Docs site** | `npm run dev --workspace=docs` → http://localhost:3002 |
-
-## Development commands
-
-```bash
-npm run dev          # Start all apps (Turborepo)
-npm run build        # Production build
-npm run lint         # ESLint across workspace
-npm run check-types  # TypeScript check
-```
-
-Run a single app:
-
-```bash
-npx turbo dev --filter=web
-```
-
-## Architecture highlights
-
-- **DDD** — Five bounded contexts: Auth, Organization, Billing, AI, User
-- **Clean Architecture** — Each NestJS module: `domain/` → `application/` → `infrastructure/` → `presentation/`
-- **Multi-tenancy** — Shared schema with `organizationId` on tenant-scoped tables; every query filters by tenant
-- **Streaming** — AI responses via Server-Sent Events (SSE), not WebSockets
-
-Details: [Architecture](docs/architecture.md).
+| [AGENTS.md](AGENTS.md) | Guide for AI coding agents |
 
 ## License
 
-Private / portfolio project — add your license here when you open-source or distribute.
+Private / portfolio project — add your license here before distributing.

@@ -44,6 +44,7 @@ DATABASE_URL=postgresql://saas_user:saas_pass@localhost:5432/saas_db
 REDIS_URL=redis://localhost:6379
 JWT_SECRET=<openssl rand -base64 64>
 JWT_REFRESH_SECRET=<openssl rand -base64 64>
+# Optional: without a real key the chat returns mock responses
 OPENAI_API_KEY=sk-...
 ```
 
@@ -53,16 +54,22 @@ Generate secrets:
 openssl rand -base64 64
 ```
 
+> **No external accounts needed.** The app is fully functional without OpenAI,
+> Stripe, Resend or OAuth keys. Each integration degrades gracefully: the chat
+> falls back to a mock provider, billing runs in "demo mode", and invitations
+> fall back to copyable links. A clear banner is shown in the UI when a feature
+> is in demo mode.
+
 ### Web (`apps/web/.env.local`)
 
 Copy from `apps/web/.env.local.example`, then set:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-NEXTAUTH_SECRET=<same-as-JWT_SECRET>
-NEXTAUTH_URL=http://localhost:3000
 ```
+
+Authentication is handled by the API's own JWT implementation (access +
+rotating refresh tokens) — there is no NextAuth dependency.
 
 ## Database
 
@@ -72,14 +79,23 @@ Prisma reads `DATABASE_URL` from **`apps/api/.env`** (same file as the API). Ens
 cp apps/api/.env.example apps/api/.env
 # Edit DATABASE_URL if needed (default matches docker-compose)
 
-npm run db:migrate
 npm run db:generate
+npm run db:migrate
+npm run db:seed   # optional: demo account + sample conversations
 ```
+
+The seed creates a ready-to-use demo account:
+
+| Field | Value |
+|-------|-------|
+| Email | `demo@demo.com` |
+| Password | `demo1234` |
+| Organization | Demo Workspace (PRO) |
 
 Optional: open Prisma Studio:
 
 ```bash
-npx prisma studio --schema=packages/db/schema.prisma
+npx prisma studio --schema=packages/db/prisma/schema.prisma
 ```
 
 ## Run development servers
