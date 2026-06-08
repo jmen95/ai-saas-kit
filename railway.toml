@@ -1,0 +1,10 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+# Apply pending Prisma migrations before each deploy (uses DATABASE_URL from Railway).
+releaseCommand = "npx prisma migrate deploy --schema=../../packages/db/prisma/schema.prisma"
